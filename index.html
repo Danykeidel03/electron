@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!--<script type="module" src="script.js"></script>-->
+
+    <script>
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                document.getElementById('placeholder').value = xhr.responseText;
+            }
+        }
+        xhr.open('GET', 'salida.txt');
+        xhr.send();
+        //var pong = "";
+        const ipc = require("electron").ipcRenderer;
+
+
+        window.addEventListener('DOMContentLoaded', () => {
+            ipc.send("message");
+            ipc.on("reply", (event, arg) => {
+                console.dir(arg);
+                localStorage.setItem('pong', arg);
+                setTimeout(() => {
+                    // prueba (localStorage.getItem('pong') );
+                }, 1000);
+
+
+
+
+
+            });
+
+        })
+
+
+        async function glpiapi() {
+
+
+            //Primera conexion a la api para generar token de sesion(session_token) necesario en todas las consultas
+            await axios.get('https://glpi.appsbecallgroup.com/apirest.php/initSession?app_token=qgQ8FwWgsE1rVeaCHtfjPhP5X1F6MgJxRPkh48sU&user_token=i0lTcMsI9OyaM8RzXqpNldffXuO1IWxaKgK1Qmqt', {
+                auth: {
+                    username: 'glpi',
+                    password: 'glpi'
+                },
+
+
+            })
+                .then(async function (response) {
+                    /*obtenemos el token y lo guardamos en una variable para poder usarlo en el resto de peticiones ya que debe ser el mismo token y con
+                    cada consulta se genera uno distinto*/
+
+                    var session_token = response.data.session_token
+                    //console.log(response.data.session_token);
+
+                    //obtenemos todos los assets
+                    await axios.get('https://glpi.appsbecallgroup.com/apirest.php/computer?session_token=' + session_token + '&app_token=qgQ8FwWgsE1rVeaCHtfjPhP5X1F6MgJxRPkh48sU', {
+                        auth: {
+                            username: 'glpi',
+                            password: 'glpi'
+                        }
+
+
+                    })
+                        .then(async function (response) {
+
+
+
+                            var todos_pcs = response.data
+                            console.dir(todos_pcs)
+                            var esta = false;
+                            const arrayMaquinas = [];
+
+                            Object.keys(todos_pcs).forEach(key => {
+                                arrayMaquinas.push(todos_pcs[key].name);
+
+                            });
+
+
+
+                            //   let pong1 = localStorage.getItem('pong')
+
+                            var pong1 = document.getElementById("placeholder").value
+
+                            // pong1 = "BeCallLE031Z"
+
+
+
+                            let comprobacion = arrayMaquinas.includes(pong1)
+
+                            console.log(comprobacion)
+
+                            if (comprobacion == true) {
+
+
+
+                                var item = todos_pcs.find(item => item.name === pong1);
+
+
+                                console.log(item.id);
+                                var id_asset = item.id
+                                //con la siguiente consulta traemos la informacion del asset que seleccionemos por el ID
+                                await axios.get('https://glpi.appsbecallgroup.com/apirest.php/computer/' + id_asset + '?session_token=' + session_token + '&app_token=qgQ8FwWgsE1rVeaCHtfjPhP5X1F6MgJxRPkh48sU', {
+                                    auth: {
+                                        username: 'glpi',
+                                        password: 'glpi'
+                                    }
+
+                                })
+                                    .then(async function (response) {
+
+                                        //de la respuesta de la api guardamos los valores que queremos visualizar por pantalla
+                                        // var id = response.data.id
+                                        var nombre_equipo = response.data.name
+                                        var locationID = response.data.locations_id
+
+                                        console.log("ID DE MI UBICACION " + locationID)
+                                        //y aqui mostramos los valores en los inputs del formulario
+                                        // document.getElementById("id_equipo").value = id
+                                        document.getElementById("nombre").value = nombre_equipo
+                                        document.getElementById("ubicaciones").value = locationID
+                                        // console.log(response);
+                                        await axios.get('https://glpi.appsbecallgroup.com/apirest.php/location?session_token=' + session_token + '&app_token=qgQ8FwWgsE1rVeaCHtfjPhP5X1F6MgJxRPkh48sU', {
+                                            auth: {
+                                                username: 'glpi',
+                                                password: 'glpi'
+                                            }
+
+                                        })
+                                            .then(function (response) {
+                                                var locs = response.data
+                                                console.log(response.data)
+                                                var sit = locs.find(sit => sit.id === locationID);
+
+                                                var mi_ubicacion = sit.name
+                                                document.getElementById("actual").innerHTML = mi_ubicacion
+                                                Object.keys(locs).forEach(key => {
+                                                    //   console.log( locs[key].name);
+                                                    var sitios = document.getElementsByName('grupo')
+                                                    var option = document.createElement("option");
+                                                    option.value = locs[key].id
+                                                    option.text = locs[key].name
+
+                                                    sitios[0].appendChild(option)
+
+                                                });
+
+
+                                            })
+                                            .catch(function (error) {
+                                                // manejar error
+                                                console.log(error);
+                                            })
+                                            .finally(function () {
+                                                // siempre sera executado
+                                            });
+
+
+
+                                    })
+                                    .catch(function (error) {
+                                        // manejar error
+                                        console.log(error);
+                                    })
+                                    .finally(function () {
+                                        // siempre sera executado
+                                    });
+
+                                //Obtemeos el valor del select para cambiar la ubicacion del equipo
+                                var select = document.getElementById('ubicaciones')
+                                select.onclick = function () {
+                                    var selectedOption = this.options[select.selectedIndex];
+                                    var ubs = selectedOption.value
+                                    console.log(selectedOption.value);
+
+
+                                    //function onclick para salvar los datos que actualizemos del asset
+                                    document.getElementById("save").onclick = async function () {
+
+
+
+                                        //consulta para actualizar el asset
+                                        await axios.put('https://glpi.appsbecallgroup.com/apirest.php/computer/' + id_asset + '?session_token=' + session_token + '&app_token=qgQ8FwWgsE1rVeaCHtfjPhP5X1F6MgJxRPkh48sU', {
+                                            auth: {
+                                                username: 'glpi',
+                                                password: 'glpi'
+                                            },
+                                            input: {
+                                                locations_id: "" + ubs
+                                            }
+
+                                        }
+
+                                        )
+                                            .then(function (response) {
+
+                                                console.log(response);
+                                            })
+                                            .catch(function (error) {
+                                                // manejar error
+                                                console.log(error);
+                                            })
+                                            .finally(function () {
+                                                // siempre sera executado
+                                            });
+                                    };
+                                }
+
+
+                            }
+
+                        })
+                        .catch(function (error) {
+                            // manejar error
+                            console.log(error);
+                        })
+                        .finally(function () {
+                            // siempre sera executado
+                        });
+
+
+
+
+                })
+                .catch(function (error) {
+                    // manejar error
+                    console.log(error);
+                })
+                .finally(function () {
+                    // siempre sera executado
+                });
+        }
+
+        glpiapi();
+/*setTimeout(() => {
+            glpiapi();
+        }, "1000");*/
+
+    </script>
+
+
+    <style>
+        #placeholder {
+            display: none;
+        }
+
+        .button {
+            margin-left: 135px;
+            font-family: "Segoe UI Light";
+            padding-left: 15px;
+            padding-right: 15px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border: 2px solid #86b817;
+            position: relative;
+            overflow: hidden;
+            background-color: transparent;
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 16px;
+            transition: .3s;
+            z-index: 1;
+            font-family: inherit;
+            letter-spacing: 4px;
+            font-weight: 600;
+            color: #86b817;
+        }
+
+        .button::before {
+            content: '';
+            width: 0;
+            height: 300%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            background: #86b817;
+            transition: .5s ease;
+            display: block;
+            z-index: -1;
+        }
+
+        .button:hover::before {
+            width: 105%;
+        }
+
+        .button:hover {
+            color: white;
+            font-family: "Segoe UI Light";
+            letter-spacing: 4px;
+            font-weight: 600;
+
+        }
+
+        form {
+            margin-left: 200px;
+        }
+
+        h1 {
+            margin-top: 70px;
+            font-family: "Segoe UI Light";
+            text-align: center;
+        }
+
+        label {
+            margin-bottom: 3px;
+        }
+
+        input {
+            padding-left: 6px;
+        }
+
+        select {
+            padding: 3px;
+        }
+
+        input,
+        select {
+            width: 200px;
+        }
+
+        .input {
+            max-width: 190px;
+            background-color: #f5f5f5;
+            color: #242424;
+            padding: .15rem .5rem;
+            min-height: 40px;
+            border-radius: 4px;
+            outline: none;
+            border: none;
+            line-height: 1.15;
+            box-shadow: 0px 10px 20px -18px;
+        }
+
+        input:focus {
+            border-bottom: 2px solid #86b817;
+            border-radius: 4px 4px 2px 2px;
+        }
+
+        input:hover {
+            outline: 1px solid lightgrey;
+        }
+
+        #cabecera {
+            margin-left: 35px;
+            margin-top: 55px;
+        }
+
+        img {
+            margin-top: 55px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="row mb-4" id="cabecera">
+
+
+        <div class="col-1 "></div>
+        <div class="col-1 "></div>
+        <div class="col-1"></div>
+
+        <div class="col-1">
+            <img src="logo.png" width="80px" height="100px">
+        </div>
+        <div class="col-1 d-xl-none"></div>
+        <div class="col-4">
+            <h1>AGENTE DE <br>INVENTARIO</h1>
+        </div>
+
+
+    </div>
+
+
+    <form id="formulario">
+        <div class="row mb-3">
+            <!--   <div class="col-4">
+                <label>ID:</label><br>
+                <input type="text" id="id_equipo"  class="input"name="id">
+            </div>-->
+            <div class="col-sm-4 col-xl-4">
+                <label>Nombre del equipo:</label><br>
+                <input type="text" readonly="true" class="input" id="nombre" name="name">
+            </div>
+            <div class="col-sm-6 col-xl-4">
+                <label>Ubicacion: <span id="actual" style="font-weight: bold;"></span></label><br>
+                <select class="input" id="ubicaciones" name="grupo">
+                    <option value="" label="Nueva Ubicacion..."></option>
+                </select>
+            </div>
+        </div>
+
+        <input type="text" id="placeholder">
+        <div class="row">
+            <div class="col">
+
+                <button type="submit" id="save" class="button">GUARDAR</button>
+            </div>
+        </div>
+    </form>
+
+
+
+
+</body>
+
+</html>
