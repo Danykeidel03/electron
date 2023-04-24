@@ -12,9 +12,8 @@
     "build": "electron-builder",
     "build:dir": "electron-builder --dir",
     "build:clean": "rm -rf build",
-    "publish": "electron-builder --publish always",
-    "package": "electron-builder"
-  },
+    "publish": "electron-builder --publish always"
+    },
   "build": {
     "appId": "com.example.app",
     "productName": "Agente Inventario",
